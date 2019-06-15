@@ -40,6 +40,14 @@ class Orchestrator {
   	return res;
   }
 
+  deleteAsset( assetId, ou) {
+	  let res = this.requestSync( {type: 'DELETE',
+				extension: `odata/Assets(${assetId})`,
+				ou: ou})
+	  return res;
+  }
+
+
   getAssets( unit) {
 	  let res = this.requestSync( {
 			type: 'GET',
@@ -61,22 +69,24 @@ class Orchestrator {
 	  units.forEach( (elm,idx) => {
 		  let assets = this.getAssets( elm)['value'];
 		  assets.forEach( ass => {
-			var body = { 
-				Name: ass.Name,
-				ValueScope: ass.ValueScope,
-				ValueType: ass.ValueType }
-			if ( ass.ValueType == 'Text')	
-				body["StringValue"] = ass.StringValue;
-			else if ( ass.ValueType == 'Bool')
-				body["BoolValue"] = ass.BoolValue;
-			else if ( ass.ValueType == 'Integer')
-				body['IntValue'] = ass.IntValue;
-			//console.log( targetou[0])
-			let err = newTenantOrch.createAsset( body, targetou[idx].Id)
-			//console.log(err)
-		  });  
+			  if( ass.ValueScope == 'Global') {
+				var body = { 
+					Name: ass.Name,
+					ValueScope: ass.ValueScope,
+					ValueType: ass.ValueType }
+				if ( ass.ValueType == 'Text') {
+					body["StringValue"] = ass.StringValue;
+					let err = newTenantOrch.createAsset( body, targetou[idx].Id)
+				} else if ( ass.ValueType == 'Bool') {
+					body["BoolValue"] = ass.BoolValue;
+					let err = newTenantOrch.createAsset( body, targetou[idx].Id)
+				} else if ( ass.ValueType == 'Integer') {
+					body['IntValue'] = ass.IntValue;
+					let err = newTenantOrch.createAsset( body, targetou[idx].Id)
+				}
+			}});  
 	  });
-  }
+    }
 
 	printToken() {
 		console.log( this.token)
@@ -138,13 +148,19 @@ class Orchestrator {
 	xhttp.setRequestHeader('Authorization', 'Bearer ' + (this.token || ''));
     if( p.hasOwnProperty('ou')) {
       xhttp.setRequestHeader('X-UIPATH-OrganizationUnitId', p["ou"]);
-    }
-    xhttp.send(p["body"]);
+	}
+	if( p.hasOwnProperty('body'))
+		xhttp.send(p["body"]);
+	else
+		xhttp.send()
 
     if ( xhttp.status >= 200 && xhttp.status < 300) {
-	  let resp= JSON.parse(xhttp.responseText);
-	  //console.log(resp)
-	  return resp;
+		try {
+			let resp= JSON.parse(xhttp.responseText);
+			return resp;
+		} catch  {
+			return xhttp.status;
+		}
     }
   }
 
